@@ -1,0 +1,377 @@
+---
+title: "Laporan Minggu 1-2: Pengantar Pemrograman Data Spasial"
+subtitle: "Batas Administrasi Kabupaten/Kota Provinsi Jawa Timur"
+author: "Nama - NPM"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Deskripsi Singkat
+
+Laporan ini mencakup pembelajaran dasar pemrograman R untuk data spasial: variabel, tipe data, struktur data, indexing, coercion, operator, dan visualisasi objek `sf`. Data yang digunakan adalah batas administrasi kabupaten/kota di Provinsi Jawa Timur.
+
+## Modifikasi dari Kode Asli Dosen
+
+Berikut perubahan yang dilakukan dari `Code_Week_1 and 2.R` versi dosen:
+
+| Bagian | Kode Dosen | Modifikasi | Alasan |
+|--------|-----------|------------|--------|
+| Data spasial | `nc.shp` (North Carolina, USA) | `Provinsi Jawa Timur-KAB_KOTA.geojson` | Data lebih relevan dengan konteks Indonesia |
+| Variabel | `age <- 54`, `city_name <- "Surabaya"` | `kab_kota <- "Surabaya"`, `kode_provinsi <- "35"`, `luas_wilayah_km2 <- 47800.45` | Konteks data spasial Jawa Timur |
+| Variabel | `landslide_count <- 8L` | `jumlah_kabkota <- 28L` | Sesuai jumlah kab/kota di Jatim (data GeoJSON) |
+| Variabel | `rainfall_mm <- 125.6` | `luas_wilayah_km2 <- 47800.45` | Atribut luas wilayah tersedia dari geometri |
+| Mixed vector | `c(5.7, 4, "yes", TRUE)` | `c(5.7, 4, "ya", TRUE)` | Bahasa Indonesia |
+| List | `name = "Agam"`, `population = 351000` | `nama = "Malang"`, `jumlah_kecamatan = 33` | Data kota di Jawa Timur |
+| data.frame | Sites A, B, C dengan koordinat dummy | data.frame kab/kota Jatim dengan lintang/bujur aktual | Data koordinat relevan |
+| hazard_table | Lokasi A-E dengan slope/rainfall | kawasan_df kab/kota Jatim dengan luas/kepadatan | Data kab/kota nyata |
+| Mini Lab | Kategori `AREA > median(AREA)` dari nc.shp | Hitung `luas_km2` dari `st_area()`, kategori berdasarkan median | Data GeoJSON tidak punya kolom AREA |
+| Output | `output/week01_area_class_map.png` | `output/week01_kategori_luas_jatim.png` | Nama file sesuai data |
+| Folder | `data/`, `scripts/`, `output/` di root | Subfolder `Week_1 and 2/` | Struktur terpisah per minggu |
+| `.libPaths` | Tetap ada (custom library path) | Dihapus | Portabilitas - pakai library default RStudio |
+
+## Data
+
+```{r load-data}
+library(sf)
+library(tidyverse)
+
+jatim_path <- file.path("data", "Provinsi Jawa Timur-KAB_KOTA.geojson")
+jatim <- st_read(jatim_path, quiet = TRUE)
+
+glimpse(jatim)
+```
+
+```{r data-preview}
+jatim %>%
+  st_drop_geometry() %>%
+  select(kab_kota, nama, kode_kk, provinsi)
+```
+
+```{r data-structure}
+cat("Jumlah kabupaten/kota:", nrow(jatim), "\n")
+cat("CRS:", st_crs(jatim)$epsg, "\n")
+cat("Tipe geometri:", paste(unique(st_geometry_type(jatim)), collapse = ", "), "\n")
+```
+
+## Code dan Hasil
+
+### 1. Variabel dan Assignment
+
+```{r variabel}
+kab_kota <- "Surabaya"
+kode_provinsi <- "35"
+jumlah_kabkota <- 28L
+luas_wilayah_km2 <- 47800.45
+provinsi_pesisir <- TRUE
+
+print(kab_kota)
+print(kode_provinsi)
+print(jumlah_kabkota)
+print(luas_wilayah_km2)
+print(provinsi_pesisir)
+```
+
+Modifikasi: semua variabel dummy diganti konteks Jawa Timur. `kode_provinsi = "35"` adalah kode BPS untuk Provinsi Jawa Timur.
+
+### 2. Case Sensitivity
+
+```{r case-sensitive}
+Kab_Kota <- "Surabaya"
+KAB_KOTA <- "SURABAYA"
+
+print(c(kab_kota = kab_kota, Kab_Kota = Kab_Kota, KAB_KOTA = KAB_KOTA))
+```
+
+Modifikasi: tidak ada perubahan logika, hanya nilai yang disesuaikan.
+
+### 3. Tipe Data
+
+```{r tipe-data}
+luas_kab_malang_km2 <- 3530.65
+jumlah_kec_mojokerto <- 18L
+status_kota <- "Kota"
+kota_pesisir <- TRUE
+nilai_kompleks <- 1 + 4i
+data_hilang <- NA
+objek_kosong <- NULL
+bukan_angka <- NaN
+
+atomic_objects <- list(
+  luas_kab_malang_km2 = luas_kab_malang_km2,
+  jumlah_kec_mojokerto = jumlah_kec_mojokerto,
+  status_kota = status_kota,
+  kota_pesisir = kota_pesisir,
+  nilai_kompleks = nilai_kompleks,
+  data_hilang = data_hilang,
+  objek_kosong = objek_kosong,
+  bukan_angka = bukan_angka
+)
+
+for (nm in names(atomic_objects)) {
+  x <- atomic_objects[[nm]]
+  cat("\n", nm, "\n", sep = "")
+  print(x)
+  cat("class :", paste(class(x), collapse = ", "), "\n")
+  cat("typeof:", typeof(x), "\n")
+}
+```
+
+Modifikasi: nama variabel dan nilai disesuaikan dengan data spasial (luas Malang, kecamatan Mojokerto, status Kota/Kabupaten).
+
+### 4. Struktur Data
+
+```{r struktur}
+lintang_kab <- c(-7.26, -7.97, -8.12, -7.54)
+kabupaten <- c("Surabaya", "Malang", "Kediri", "Mojokerto")
+
+campuran <- c(5.7, 4, "ya", TRUE)
+
+kota <- list(
+  nama = "Malang",
+  jumlah_kecamatan = 33,
+  ketinggian_mdpl = 468.45,
+  lintang_bujur = c(-7.97, 112.63)
+)
+
+kab_df <- data.frame(
+  kabupaten = c("Surabaya", "Malang", "Kediri", "Mojokerto"),
+  lintang = c(-7.26, -7.97, -8.12, -7.54),
+  bujur = c(112.75, 112.63, 112.01, 112.43),
+  status = c("Kota", "Kota", "Kabupaten", "Kabupaten")
+)
+
+kab_tbl <- tibble(
+  kabupaten = c("Surabaya", "Malang", "Kediri", "Mojokerto"),
+  lintang = c(-7.26, -7.97, -8.12, -7.54),
+  bujur = c(112.75, 112.63, 112.01, 112.43),
+  status = c("Kota", "Kota", "Kabupaten", "Kabupaten")
+)
+
+print(kab_df)
+print(kab_tbl)
+```
+
+Modifikasi: data.frame/tibble berisi koordinat lintang-bujur kab/kota di Jawa Timur.
+
+### 5. Indexing
+
+```{r indexing}
+nilai_campuran <- c(5.7, 4, "ya", TRUE)
+
+print(nilai_campuran[1])
+print(nilai_campuran[3])
+print(nilai_campuran[1:3])
+
+print(kota$nama)
+print(kota[["jumlah_kecamatan"]])
+
+print(kab_df$status)
+print(kab_df[1, ])
+print(kab_df[, "kabupaten"])
+
+print(head(jatim$kab_kota))
+print(head(st_geometry(jatim), 2))
+```
+
+Modifikasi: indexing pada data.frame kab/kota Jatim dan objek `jatim` (sf).
+
+### 6. Type Conversion
+
+```{r conversion}
+numeric_dari_teks <- as.numeric("468.45")
+teks_dari_angka <- as.character(2026)
+logical_dari_angka <- as.logical(1)
+nilai_tanggal <- as.Date("2026-09-07")
+status_faktor <- factor(c("Kota", "Kabupaten", "Kota", "Kabupaten"))
+
+bad_numeric <- suppressWarnings(as.numeric("468 mdpl"))
+clean_numeric <- as.numeric(gsub(" mdpl", "", "468 mdpl"))
+
+print(numeric_dari_teks)
+print(teks_dari_angka)
+print(logical_dari_angka)
+print(nilai_tanggal)
+print(status_faktor)
+print(bad_numeric)
+print(clean_numeric)
+```
+
+Modifikasi: contoh string "468 mdpl" (ketinggian Malang) menggantikan "125 mm".
+
+### 7. Operator Aritmatika
+
+```{r arithmetic}
+print(4 + 3)
+print(4 - 3)
+print(4 * 3)
+print(7 / 2)
+print(7 %% 2)
+print(7 %/% 2)
+print(7 ^ 2)
+
+print(4 + 3 ^ 2)
+print((4 + 3) ^ 2)
+print(16 ^ 2 / 4)
+```
+
+Modifikasi: tidak ada — operator aritmatika bersifat universal.
+
+### 8. Operator Perbandingan
+
+```{r comparison}
+x <- 5
+
+print(x == 5)
+print(x != 5)
+print(x < 7)
+print(x > 7)
+print(x <= 5)
+print(x >= 5)
+
+kode_prov <- "35"
+print(kode_prov %in% c("35", "33", "32"))
+
+luas_kab <- 3530
+kepadatan <- 1200
+status_kawasan <- "Kota"
+jarak_ke_pesisir <- 15
+
+print(luas_kab > 2000)
+print(kepadatan >= 1000)
+print(status_kawasan != "Kabupaten")
+```
+
+Modifikasi: variabel spasial (luas, kepadatan, status, jarak ke pesisir) menggantikan slope/rainfall.
+
+### 9. Operator Logika
+
+```{r logical}
+x <- 14
+y <- 42
+
+x_genap <- (x %% 2) == 0
+y_habis_dibagi_3 <- (y %% 3) == 0
+
+kota_padat <- status_kawasan == "Kota" & kepadatan > 1000
+kota_dekat_pesisir <- status_kawasan == "Kota" & jarak_ke_pesisir < 50
+
+print(x_genap & y_habis_dibagi_3)
+print(x_genap | FALSE)
+print(!x_genap)
+print(kota_padat)
+print(kota_dekat_pesisir)
+```
+
+Modifikasi: logika spasial untuk filtering kota padat dan kota dekat pesisir.
+
+### 10. Vectorised Filtering
+
+```{r filtering}
+kawasan_df <- tibble(
+  kabupaten = c("Surabaya", "Malang", "Kediri", "Mojokerto", "Bondowoso"),
+  luas_km2 = c(374.17, 3530.65, 2371.88, 692.10, 1647.47),
+  kepadatan = c(7973, 744, 1629, 1843, 526),
+  status = c("Kota", "Kota", "Kabupaten", "Kabupaten", "Kabupaten")
+)
+
+kawasan_df %>%
+  filter(status == "Kota" & luas_km2 > 1000)
+```
+
+Modifikasi: tabel hazard dummy (lokasi A-E) diganti data luas/kepadatan kab/kota Jatim.
+
+### 11. String Operations
+
+```{r strings}
+x <- "R"
+y <- "spatial"
+
+print(paste(x, y))
+print(paste0(x, "-", y))
+print(strrep("jatim ", 3))
+
+print(stringr::str_to_upper("pemrograman spasial"))
+print(stringr::str_detect("pemrograman spasial", "spasial"))
+
+nama_provinsi <- "Jawa Timur"
+print(glue::glue("Study area: {nama_provinsi}"))
+
+wrong_string_operation <- try("R" + "spatial", silent = TRUE)
+print(wrong_string_operation)
+```
+
+Modifikasi: konteks string "Jawa Timur" menggantikan "Surabaya".
+
+### 12. Strings + Numbers
+
+```{r strings-numbers}
+x <- 6
+answer <- (x * 5345) %/% 763
+
+penduduk_jatim <- 41150000
+popup <- paste("Populasi:", format(penduduk_jatim, big.mark = ","))
+
+print(answer)
+print(paste("The answer is", answer))
+print(glue::glue("The answer is {answer}"))
+print(popup)
+```
+
+Modifikasi: `penduduk_jatim` (41.15 juta) menggantikan `population` generik.
+
+## Mini Lab: Visualisasi Objek sf
+
+### Menghitung Luas Wilayah
+
+```{r hitung-luas}
+jatim_lab <- jatim %>%
+  mutate(
+    luas_km2 = as.numeric(st_area(geometry)) / 1e6,
+    kelas_luas = if_else(
+      luas_km2 > median(luas_km2, na.rm = TRUE),
+      "Luas",
+      "Kecil"
+    )
+  )
+
+jatim_lab %>%
+  st_drop_geometry() %>%
+  select(kab_kota, luas_km2, kelas_luas) %>%
+  arrange(desc(luas_km2))
+```
+
+Modifikasi: kolom `area_class` dihitung dari `st_area()` karena GeoJSON tidak memiliki kolom `AREA` seperti `nc.shp`.
+
+### Peta Kategori Luas
+
+```{r peta, fig.width=10, fig.height=8}
+library(ggplot2)
+
+ggplot(jatim_lab) +
+  geom_sf(aes(fill = kelas_luas)) +
+  geom_sf_text(aes(label = kab_kota), size = 2, check_overlap = TRUE) +
+  labs(
+    title = "Kategori Luas Wilayah Kabupaten/Kota",
+    subtitle = "Provinsi Jawa Timur",
+    fill = "Kategori"
+  ) +
+  theme_minimal()
+```
+
+Modifikasi: `geom_sf_text()` ditambahkan untuk menampilkan nama kabupaten/kota langsung di peta.
+
+## Pembahasan
+
+1. **Data**: GeoJSON batas administrasi Jawa Timur memiliki `r nrow(jatim)` kabupaten/kota dengan atribut `kab_kota`, `nama`, dan `kode_kk`.
+2. **Luas wilayah** dihitung dari geometri menggunakan `st_area()` dan dikonversi ke km².
+3. **Distribusi luas**: Sebagian besar kabupaten/kota memiliki luas di bawah median, dengan beberapa kabupaten besar (Bondowoso, Banyuwangi, Malang) sebagai kategori "Luas".
+4. **Visualisasi** dengan `ggplot2` + `geom_sf()` efektif untuk menampilkan pola spasial batas administrasi.
+5. **Relevansi**: Penggunaan data administrasi nyata memberikan pemahaman langsung tentang struktur data spasial di Indonesia.
+
+## Kesimpulan
+
+Dasar pemrograman R (variabel, operator, struktur data) dapat langsung diaplikasikan pada objek spasial `sf`. Data batas administrasi nyata memberikan konteks yang lebih relevan untuk analisis spasial wilayah Indonesia. Semua konsep dasar dari kode dosen tetap dipertahankan, hanya konteksnya yang disesuaikan dengan data Jawa Timur.
