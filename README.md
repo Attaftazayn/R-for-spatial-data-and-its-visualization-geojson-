@@ -1,5 +1,11 @@
 # R for Spatial Data and Its Visualization
 
+<img src="https://img.shields.io/badge/R-4.6.1-276DC3?logo=r&logoColor=white" alt="R">
+<img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License">
+<img src="https://img.shields.io/badge/Data-BPS_Indonesia-green.svg" alt="Data Source">
+<img src="https://img.shields.io/badge/Workflow-GitHub_Actions-2088FF?logo=githubactions&logoColor=white" alt="CI/CD">
+<img src="https://img.shields.io/github/repo-size/Attaftazayn/R-for-spatial-data-and-its-visualization" alt="Repo Size">
+
 Spatial data analysis and visualization project using R, featuring administrative boundaries of East Java, Indonesia.
 
 ## Overview
