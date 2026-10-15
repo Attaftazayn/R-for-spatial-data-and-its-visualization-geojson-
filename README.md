@@ -74,6 +74,8 @@ source("Code_Week_1 and 2.R")
 
 The workflow produces a thematic map classifying regencies/municipalities by area (above/below median) with labeled boundaries.
 
+![Kategori Luas Wilayah Jawa Timur](output/week01_kategori_luas_jatim.png)
+
 ## License
 
 Data: BPS Indonesia (public domain). Code: MIT License.
