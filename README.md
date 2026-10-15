@@ -1,4 +1,4 @@
-<h1 align="center">R for Spatial Data and Its Visualization</h1>
+<h1 align="center">R for Spatial Data and Its Visualization for geojson</h1>
 
 <p align="center">
   <img src="https://img.shields.io/badge/R-4.6.1-276DC3?logo=r&logoColor=white" alt="R">
